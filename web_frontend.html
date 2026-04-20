@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚖️法律助手</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a33;
+      --muted: #8e9cc9;
+      --text: #ecf1ff;
+      --accent: #6ea8fe;
+      --border: #23305f;
+      --ok: #2bc48a;
+      --warn: #ffb020;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(160deg, #090d1a 0%, #121a33 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 28px auto;
+      padding: 0 16px 24px;
+    }
+    .title {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .composer {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    textarea {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 12px;
+      resize: vertical;
+      min-height: 84px;
+      font-size: 15px;
+    }
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 0 18px;
+      background: var(--accent);
+      color: #08112a;
+      font-weight: 700;
+      cursor: pointer;
+      min-width: 110px;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status {
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1fr 1fr;
+    }
+    .panel {
+      background: rgba(18, 26, 51, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 360px;
+    }
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 17px;
+    }
+    .step {
+      margin-bottom: 10px;
+      border: 1px solid #2e3e78;
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(15, 23, 46, 0.9);
+    }
+    .step-title {
+      color: #9fb8ff;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .step-content {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+    .answer {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      min-height: 230px;
+      font-size: 15px;
+    }
+    .citations {
+      margin-top: 12px;
+      border-top: 1px dashed #344987;
+      padding-top: 10px;
+    }
+    .citation-item {
+      color: #c0d0ff;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      button { padding: 10px 14px; }
+      .composer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">⚖️法律助手</div>
+    <div class="subtitle">请输入您的问题</div>
+
+    <div class="composer">
+      <textarea id="question" placeholder="例如：员工被公司无故辞退，怎么主张赔偿？"></textarea>
+      <button id="sendBtn">发送问题</button>
+    </div>
+
+    <div class="status" id="status">等待提问...</div>
+
+    <div class="grid">
+      <div class="panel">
+        <h3></h3>
+        <div class="step">
+          <div class="step-title">1. 核心分析</div>
+          <div class="step-content" id="core_analysis"></div>
+        </div>
+        <div class="step">
+          <div class="step-title">2. 检索过程</div>
+          <div class="step-content" id="retrieval_process"></div>
+        </div>
+        <div class="step">
+          <div class="step-title">3. 推理过程</div>
+          <div class="step-content" id="reasoning_process"></div>
+        </div>
+        <div class="step">
+          <div class="step-title">4. 最终结论</div>
+          <div class="step-content" id="final_conclusion"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>完整回答</h3>
+        <div class="answer" id="full_answer"></div>
+        <div class="citations">
+          <div class="step-title">引用法条</div>
+          <div id="citations"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const questionEl = document.getElementById("question");
+    const sendBtn = document.getElementById("sendBtn");
+    const statusEl = document.getElementById("status");
+    const fullAnswerEl = document.getElementById("full_answer");
+    const citationsEl = document.getElementById("citations");
+    const sectionIds = ["core_analysis", "retrieval_process", "reasoning_process", "final_conclusion"];
+
+    function resetView() {
+      fullAnswerEl.textContent = "";
+      citationsEl.innerHTML = "";
+      for (const id of sectionIds) {
+        document.getElementById(id).textContent = "";
+      }
+    }
+
+    function renderSections(sections) {
+      if (!sections) return;
+      for (const id of sectionIds) {
+        if (typeof sections[id] === "string") {
+          document.getElementById(id).textContent = sections[id];
+        }
+      }
+    }
+
+    function renderCitations(citations) {
+      citationsEl.innerHTML = "";
+      if (!citations || citations.length === 0) {
+        citationsEl.innerHTML = '<div class="citation-item warn">无引用法条</div>';
+        return;
+      }
+      citations.forEach((item, idx) => {
+        const div = document.createElement("div");
+        div.className = "citation-item";
+        div.textContent = `${idx + 1}. ${item}`;
+        citationsEl.appendChild(div);
+      });
+    }
+
+    async function startStream(question) {
+      const response = await fetch("/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: question }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`请求失败: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let eventBreakIdx;
+        while ((eventBreakIdx = buffer.indexOf("\n\n")) >= 0) {
+          const rawEvent = buffer.slice(0, eventBreakIdx).trim();
+          buffer = buffer.slice(eventBreakIdx + 2);
+          if (!rawEvent) continue;
+
+          const lines = rawEvent.split("\n");
+          const dataLines = lines
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trimStart());
+          if (dataLines.length === 0) continue;
+
+          const payload = dataLines.join("\n").trim();
+          if (!payload) continue;
+          if (payload === "[DONE]") {
+            statusEl.innerHTML = '<span class="ok">回答完成</span>';
+            continue;
+          }
+
+          let msg = null;
+          try {
+            msg = JSON.parse(payload);
+          } catch (err) {
+            continue;
+          }
+
+          if (msg.type === "content") {
+            fullAnswerEl.textContent += msg.content || "";
+            renderSections(splitSections(fullAnswerEl.textContent));
+            statusEl.innerHTML = '<span class="warn">模型正在流式生成...</span>';
+          } else if (msg.type === "citations") {
+            renderCitations(msg.citations || []);
+          } else if (msg.type === "trace") {
+            statusEl.innerHTML = '<span class="warn">检索完成，正在生成回答...</span>';
+          } else if (msg.type === "error") {
+            statusEl.innerHTML = `<span class="warn">${msg.content || "流式响应失败"}</span>`;
+          }
+        }
+      }
+    }
+
+    function splitSections(text) {
+      const sectionKeys = ["core_analysis", "retrieval_process", "reasoning_process", "final_conclusion"];
+      const sectionTitles = {
+        core_analysis: "1.核心分析:",
+        retrieval_process: "2.检索过程：",
+        reasoning_process: "3.推理过程：",
+        final_conclusion: "4.最终结论：",
+      };
+      const sections = {};
+      sectionKeys.forEach((k) => (sections[k] = ""));
+
+      const positions = [];
+      sectionKeys.forEach((key) => {
+        const marker = sectionTitles[key];
+        const idx = text.indexOf(marker);
+        if (idx >= 0) positions.push({ idx, key, marker });
+      });
+
+      if (positions.length === 0) return sections;
+      positions.sort((a, b) => a.idx - b.idx);
+
+      for (let i = 0; i < positions.length; i++) {
+        const start = positions[i].idx + positions[i].marker.length;
+        const end = i + 1 < positions.length ? positions[i + 1].idx : text.length;
+        sections[positions[i].key] = text.slice(start, end).trim();
+      }
+      return sections;
+    }
+
+    sendBtn.addEventListener("click", async () => {
+      const question = questionEl.value.trim();
+      if (!question) {
+        statusEl.innerHTML = '<span class="warn">请输入问题后再发送</span>';
+        return;
+      }
+
+      sendBtn.disabled = true;
+      resetView();
+      statusEl.textContent = "请求已发送...";
+
+      try {
+        await startStream(question);
+      } catch (err) {
+        statusEl.innerHTML = `<span class="warn">请求失败：${err.message}</span>`;
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
