@@ -53,9 +53,12 @@ DEEPSEEK_MODEL=deepseek-chat
 # Ollama嵌入配置
 EMBEDDING_BASE_URL=http://localhost:11434
 EMBEDDING_MODEL=nomic-embed-text
+#请激活虚拟环境后进行接下来的操作
 ```
 
+
 ### 4. 准备法律文档
+先运行config.py,生成相应文件夹后，
 将所有docx格式的法律文件放入项目根目录的`law_data/`文件夹中。
 
 ### 5. 构建向量数据库
